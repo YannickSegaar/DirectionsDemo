@@ -1,3 +1,1375 @@
+
+
+// YRS: This "DirectionsWorkflowExtension7" is working not working but it does have some of the functionality
+// of the Autocomplete feature integrated into it.
+
+export const DirectionsWorkflowExtension7 = {
+  name: 'DirectionsWorkflow',
+  type: 'response',
+  match: ({ trace }) =>
+    trace.type === 'ext_directionsWorkflow7' || trace.payload?.name === 'ext_directionsWorkflow7',
+  render: ({ trace, element }) => {
+    // Extract properties from the payload
+    const { 
+      apiKey = 'AIzaSyA5y-Tq-IEhgS1NQxY7HgnXe4pPA4tPuH4', // API key
+      pickupPoints = [], // Optional: can come from data
+      workflowTitle = 'Find Your Pickup Location',
+      height = '600',
+      backgroundColor = '#ffffff',
+      // Branding colors
+      primaryColor = '#587C74',
+      secondaryColor = '#3B534E',
+      // Border options
+      borderWidth = '2px',
+      borderColor = '#587C74',
+      borderStyle = 'solid',
+      borderRadius = '12px',
+      // Shadow and effects
+      shadowColor = 'rgba(88, 124, 116, 0.2)',
+      shadowSize = '8px',
+      // Animation
+      animateIn = true,
+      // Default location bias
+      defaultLat = 21.315603,
+      defaultLng = -157.858093,
+      defaultRadius = 30000.0
+    } = trace.payload || {};
+
+    // Default pickup points if none provided
+    const defaultPickupPoints = [
+      { 
+        name: "Aloha Tower trolley stop", 
+        lat: 21.30693198561091, 
+        lon: -157.8663891824468, 
+        instructions: "Go to the trolley stop in front of Aloha Tower Marketplace (155 Ala Moana Blvd, Honolulu, HI 96813)", 
+        time: "6:45 AM", 
+        image: "https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/PickupPhoto_AlohaTowerDrive.png",
+        mapsUrl: "https://www.google.com/maps/dir//Aloha+Tower,+155+Ala+Moana+Blvd,+Honolulu,+HI+96813,+United+States/@21.3071037,-157.9484283,12z/data=!4m8!4m7!1m0!1m5!1m1!1s0x7c006e0d29acdfe5:0x69da511e4d40c5f1!2m2!1d-157.8660706!2d21.3070747?entry=ttu"
+      },
+      { 
+        name: "Ala Moana Hotel - curbside on Mahukona Street", 
+        lat: 21.290298342118497, 
+        lon: -157.84001436219415, 
+        instructions: "Meet us near the curbside at Mahukona St", 
+        time: "6:50 AM", 
+        image: "https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/PickupPhoto_AlaMoana.jpg", 
+        mapsUrl: "https://maps.app.goo.gl/JmSDbRyNRbC9oTRS6"
+      },
+      { 
+        name: "Hilton Hawaiian Village - Grand Islander bus depot", 
+        lat: 21.282800616178037, 
+        lon: -157.83548235215594, 
+        instructions: "We will pick you up at 7:00AM from The Grand Islander Bus Depot (Paoa Pi Street)", 
+        time: "7:00 AM", 
+        image: "https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/PickupPhoto_HiltonGrandislander.jpg",
+        mapsUrl: "https://maps.app.goo.gl/GDD8cUcH6SGaGZyo6"
+      }
+    ];
+
+    // Fixed Duke Paoa Kahanamoku Statue location
+    const FIXED_PICKUP = {
+      name: "Duke Paoa Kahanamoku Statue",
+      lat: 21.277054,
+      lon: -157.826810,
+      instructions: "Meet in front of the Duke Paoa Kahanamoku Statue at Waikiki Beach, next to the police station. Look for our tour guide with a blue 'Aloha Tours' flag.",
+      time: "8:00 AM",
+      image: "https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/PickupPhoto_DukeStatue.jpg",
+      mapsUrl: "https://maps.app.goo.gl/u1YiZZ2wQNQdNiiu5"
+    };
+
+    // Tours data - 5 fictional Hawaiian tours
+    const toursData = [
+      {
+        id: 'aloha-circle',
+        name: 'Aloha Circle Island Adventure',
+        description: 'Experience the complete beauty of Oahu with scenic coastal views, mountain ranges, and hidden gems',
+        image: 'https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/Hawaii-Tour.jpg'
+      },
+      {
+        id: 'waimea-valley',
+        name: 'Waimea Valley Cultural Experience',
+        description: 'Immerse yourself in Hawaiian traditions at sacred sites, lush botanical gardens, and spectacular waterfalls',
+        image: 'https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/PearlHarbor-Tour.jpg'
+      },
+      {
+        id: 'volcano-discovery',
+        name: 'Volcano Discovery Journey',
+        description: 'Explore the fascinating volcanic landscapes that shaped the Hawaiian islands with expert guides',
+        image: 'https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/NorthShore-Tour.jpg'
+      },
+      {
+        id: 'polynesian-heritage',
+        name: 'Polynesian Heritage Tour',
+        description: 'Discover the rich cultural heritage of ancient Hawaii through authentic performances, crafts, and stories',
+        image: 'https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/Hawaii-Tour.jpg'
+      },
+      {
+        id: 'paradise-snorkel',
+        name: 'Paradise Snorkel Safari',
+        description: 'Swim alongside tropical fish and sea turtles in Hawaii\'s crystal clear waters at premier snorkeling spots',
+        image: 'https://yannicksegaar.github.io/VF-extensions/RomAIx_GTH_Pickup_Photos/PearlHarbor-Tour.jpg'
+      }
+    ];
+
+    // Clean element first
+    element.innerHTML = '';
+
+    // Create a container for the workflow
+    const container = document.createElement('div');
+    container.style.width = '100%';
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
+    container.style.backgroundColor = 'transparent';
+    container.style.margin = '0';
+    container.style.padding = '0';
+    
+    // Create the main wrapper with fixed width
+    const wrapper = document.createElement('div');
+    wrapper.className = 'directions-workflow-wrapper';
+    
+    // Apply styling with fixed pixel width
+    const fixedWidth = '460px';
+    wrapper.style.width = fixedWidth;
+    wrapper.style.minWidth = fixedWidth;
+    wrapper.style.maxWidth = fixedWidth;
+    wrapper.style.border = `${borderWidth} ${borderStyle} ${borderColor}`;
+    wrapper.style.borderRadius = borderRadius;
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.backgroundColor = backgroundColor;
+    wrapper.style.boxShadow = `0 4px ${shadowSize} ${shadowColor}`;
+    wrapper.style.height = height + 'px';
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.margin = '0 auto';
+
+    // Add animation if enabled
+    if (animateIn) {
+      wrapper.style.opacity = '0';
+      wrapper.style.transform = 'translateY(20px)';
+      wrapper.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    }
+
+    // Workflow data object
+    const workflowData = {
+      selectedTour: "",
+      selectedTourName: "",
+      userLocation: null,
+      nearestPickup: FIXED_PICKUP,
+      apiKey: apiKey,
+      accommodationName: "",
+      addressPlace: null, // Store the selected place object
+      addressAutocomplete: null, // Store the autocomplete element
+      addressEntered: false, // Flag to track if address is entered
+      addressSelectionComplete: false // New flag to track when selection is fully processed
+    };
+
+    // Load Google Maps API with the bootstrap loader for alpha version
+    const loadGoogleMapsScript = () => {
+      return new Promise((resolve, reject) => {
+        // Check if API is already loaded
+        if (window.google && window.google.maps && window.google.maps.places) {
+          console.log('Google Maps API already loaded');
+          resolve();
+          return;
+        }
+        
+        // Create the bootstrap loader script
+        const script = document.createElement('script');
+        script.innerHTML = `
+          (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=\`https://maps.\${c}apis.com/maps/api/js?\`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+            key: "${apiKey}",
+            v: "alpha" // Use alpha channel for Places API (Preview)
+          });
+        `;
+        
+        document.head.appendChild(script);
+        
+        // Create a timeout to wait for the API to load
+        let attempts = 0;
+        const maxAttempts = 10;
+        const checkInterval = 500; // 500ms
+        
+        const checkIfLoaded = () => {
+          attempts++;
+          if (window.google && window.google.maps) {
+            // Try to load places library
+            window.google.maps.importLibrary("places")
+              .then(() => {
+                console.log('Places library loaded successfully');
+                resolve();
+              })
+              .catch(err => {
+                console.warn('Error loading Places library:', err);
+                if (attempts < maxAttempts) {
+                  setTimeout(checkIfLoaded, checkInterval);
+                } else {
+                  reject(new Error('Failed to load Places library after multiple attempts'));
+                }
+              });
+          } else if (attempts < maxAttempts) {
+            setTimeout(checkIfLoaded, checkInterval);
+          } else {
+            reject(new Error('Google Maps API failed to load after multiple attempts'));
+          }
+        };
+        
+        // Start checking if the API is loaded
+        setTimeout(checkIfLoaded, checkInterval);
+      });
+    };
+
+    // Initialize Google Places Autocomplete for the address field only
+    function setupAutocomplete() {
+      console.log('Setting up autocomplete...');
+      
+      // Enhanced API check with more detailed logging
+      if (!window.google) {
+        console.error('Google object not available');
+        setTimeout(setupAutocomplete, 500);
+        return;
+      }
+      if (!window.google.maps) {
+        console.error('Google Maps object not available');
+        setTimeout(setupAutocomplete, 500);
+        return;
+      }
+      if (!window.google.maps.places) {
+        console.error('Google Maps Places object not available');
+        setTimeout(setupAutocomplete, 500);
+        return;
+      }
+      if (!window.google.maps.places.PlaceAutocompleteElement) {
+        console.error('PlaceAutocompleteElement not available');
+        setTimeout(setupAutocomplete, 500);
+        return;
+      }
+      
+      // Only set up autocomplete for the address field
+      const addressContainer = wrapper.querySelector('#address-container');
+      
+      if (!addressContainer) {
+        console.error('Address container element not found');
+        return;
+      }
+      
+      // Clear container first to prevent duplicates
+      addressContainer.innerHTML = '';
+      
+      try {
+        // Create the address autocomplete element
+        const addressAutocomplete = new google.maps.places.PlaceAutocompleteElement({
+          types: ['address'],
+          componentRestrictions: { country: 'us' }
+        });
+        
+        addressAutocomplete.id = 'address';
+        addressAutocomplete.placeholder = 'e.g. 2005 Kalia Rd';
+        addressAutocomplete.style.width = '100%';
+        addressAutocomplete.style.height = '44px';
+        addressAutocomplete.style.borderRadius = '8px';
+        addressAutocomplete.style.transition = 'border-color 0.3s ease';
+        
+        addressContainer.appendChild(addressAutocomplete);
+        
+        // Store the autocomplete element
+        workflowData.addressAutocomplete = addressAutocomplete;
+        
+        // Add a selection status indicator
+        const selectionIndicator = document.createElement('div');
+        selectionIndicator.id = 'address-selection-indicator';
+        selectionIndicator.style.color = '#999';
+        selectionIndicator.style.fontSize = '12px';
+        selectionIndicator.style.marginTop = '4px';
+        selectionIndicator.textContent = 'Type and select an address from the dropdown';
+        addressContainer.appendChild(selectionIndicator);
+        
+        // Listen for address selection with enhanced logging
+        addressAutocomplete.addEventListener('gmp-placeselect', async (event) => {
+          console.log('PLACE SELECT EVENT TRIGGERED'); // Debug line
+          
+          try {
+            const prediction = event.place;
+            
+            // Visual feedback - update the input style to show selection is in progress
+            addressAutocomplete.style.borderColor = '#FFA500'; // Orange while processing
+            
+            if (selectionIndicator) {
+              selectionIndicator.textContent = 'Processing selection...';
+              selectionIndicator.style.color = '#FFA500';
+            }
+            
+            // Ensure we have a valid place object with necessary fields
+            await prediction.fetchFields({
+              fields: ['displayName', 'formattedAddress', 'location', 'placeId'],
+            });
+            
+            console.log('Address selected:', prediction.formattedAddress);
+            
+            // Store the place and set the flags
+            workflowData.addressPlace = prediction;
+            workflowData.addressEntered = true;
+            
+            // Update user location data
+            workflowData.userLocation = {
+              address: prediction.formattedAddress,
+              placeId: prediction.placeId,
+              lat: prediction.location.lat,
+              lng: prediction.location.lng
+            };
+            
+            // Visual feedback - update the input style to show selection is complete
+            addressAutocomplete.style.borderColor = primaryColor;
+            
+            if (selectionIndicator) {
+              selectionIndicator.textContent = 'Address selected: ' + prediction.formattedAddress;
+              selectionIndicator.style.color = primaryColor;
+            }
+            
+            // Set flag that selection is fully processed
+            workflowData.addressSelectionComplete = true;
+            
+            console.log('Address entered successfully. userLocation:', workflowData.userLocation);
+          } catch (error) {
+            console.error('Error processing selected place:', error);
+            
+            // Visual feedback for error
+            addressAutocomplete.style.borderColor = 'red';
+            
+            if (selectionIndicator) {
+              selectionIndicator.textContent = 'Error processing address. Please try again.';
+              selectionIndicator.style.color = 'red';
+            }
+            
+            // Reset flags on error
+            workflowData.addressEntered = false;
+            workflowData.addressSelectionComplete = false;
+          }
+        });
+        
+        // Listen for input changes to reset selection state when user modifies the input
+        addressAutocomplete.addEventListener('input', () => {
+          if (workflowData.addressSelectionComplete) {
+            // Reset if the user changes the input after a successful selection
+            workflowData.addressSelectionComplete = false;
+            workflowData.addressEntered = false;
+            
+            // Reset visual indicators
+            addressAutocomplete.style.borderColor = '';
+            
+            if (selectionIndicator) {
+              selectionIndicator.textContent = 'Type and select an address from the dropdown';
+              selectionIndicator.style.color = '#999';
+            }
+          }
+        });
+        
+        console.log('Address autocomplete setup complete');
+      } catch (error) {
+        console.error('Error setting up autocomplete:', error);
+        alert('There was an error setting up the address search. Please disable any ad blockers or try a different browser.');
+      }
+    }
+
+    // HTML and CSS for the workflow
+    wrapper.innerHTML = `
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
+        
+        .directions-workflow-container * {
+          box-sizing: border-box;
+          font-family: 'Inter', sans-serif;
+        }
+        
+        .directions-workflow-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          color: #333;
+          width: 100%;
+          max-width: 100%;
+          min-width: 100%;
+        }
+        
+        .workflow-header {
+          background-color: ${primaryColor};
+          color: white;
+          padding: 16px;
+          text-align: center;
+          font-weight: 600;
+          width: 100%;
+        }
+        
+        .workflow-header h2 {
+          margin: 0;
+          font-size: 18px;
+        }
+        
+        .workflow-content {
+          flex: 1;
+          overflow-y: auto;
+          position: relative;
+          width: 100%;
+        }
+        
+        .workflow-step {
+          height: 100%;
+          width: 100%;
+          max-width: 100%;
+          padding: 20px;
+          display: none;
+          animation: fadeIn 0.3s ease-in-out;
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+        
+        .workflow-step.active {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        .progress-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+          width: 100%;
+        }
+        
+        .progress-steps {
+          display: flex;
+          align-items: center;
+        }
+        
+        .step-indicator {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background-color: #e0e0e0;
+          margin: 0 5px;
+          transition: all 0.2s ease;
+        }
+        
+        .step-indicator.active {
+          background-color: ${primaryColor};
+        }
+        
+        .tour-options {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 15px;
+          margin-top: 10px;
+          width: 100%;
+          max-height: 350px;
+          overflow-y: auto;
+          padding-right: 5px;
+          margin-bottom: 15px;
+        }
+        
+        .tour-card {
+          border: 1px solid #e0e0e0;
+          border-radius: 12px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        
+        .tour-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 6px rgba(88, 124, 116, 0.2);
+        }
+        
+        .tour-card.selected {
+          border: 2px solid ${primaryColor};
+        }
+        
+        .tour-image {
+          width: 100%;
+          height: 150px;
+          object-fit: cover;
+          background-color: #f0f0f0;
+        }
+        
+        .tour-info {
+          padding: 12px;
+        }
+        
+        .tour-info h3 {
+          margin: 0 0 8px;
+          font-size: 16px;
+        }
+        
+        .tour-info p {
+          margin: 0;
+          font-size: 14px;
+          color: #666;
+        }
+        
+        .address-form {
+          margin-top: 10px;
+          width: 100%;
+        }
+        
+        .form-group {
+          margin-bottom: 16px;
+          width: 100%;
+        }
+        
+        .form-group label {
+          display: block;
+          margin-bottom: 6px;
+          font-weight: 500;
+          font-size: 14px;
+        }
+        
+        .form-control {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 15px;
+          transition: border-color 0.2s;
+          box-sizing: border-box;
+        }
+        
+        .form-control:focus {
+          outline: none;
+          border-color: ${primaryColor};
+        }
+        
+        /* Fix for google place autocomplete elements */
+        gmp-place-autocomplete {
+          width: 100%;
+          display: block;
+          font-family: 'Inter', sans-serif;
+        }
+        
+        /* Loading Animation */
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          text-align: center;
+          width: 100%;
+        }
+        
+        .loading-spinner {
+          width: 50px;
+          height: 50px;
+          border: 5px solid rgba(88, 124, 116, 0.2);
+          border-radius: 50%;
+          border-top: 5px solid ${primaryColor};
+          animation: spin 1s linear infinite;
+          margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+          font-size: 18px;
+          font-weight: 500;
+          margin-top: 15px;
+        }
+        
+        .map-container, .route-map-container {
+          margin-top: 15px;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 2px solid ${primaryColor};
+          width: 100%;
+          position: relative;
+          aspect-ratio: 4/3;
+        }
+        
+        .map-container iframe, .route-map-container iframe {
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+        
+        .confirmation-text {
+          margin: 15px 0;
+          text-align: center;
+          font-weight: 500;
+          width: 100%;
+        }
+        
+        .pickup-card {
+          border-radius: 12px;
+          overflow: hidden;
+          margin-top: 15px;
+          box-shadow: 0 2px 4px rgba(88, 124, 116, 0.2);
+          border: 2px solid ${primaryColor};
+          width: 100%;
+          box-sizing: border-box;
+        }
+        
+        .pickup-image {
+          width: 100%;
+          height: 180px;
+          object-fit: cover;
+        }
+        
+        .pickup-info {
+          padding: 15px;
+        }
+        
+        .pickup-title {
+          font-size: 18px;
+          font-weight: 600;
+          margin-bottom: 8px;
+          color: ${primaryColor};
+        }
+        
+        .pickup-address {
+          font-size: 15px;
+          margin-bottom: 10px;
+        }
+        
+        .pickup-instructions {
+          font-size: 14px;
+          color: #555;
+          border-left: 3px solid ${primaryColor};
+          padding-left: 10px;
+          margin-top: 10px;
+        }
+        
+        .route-details {
+          margin-top: 15px;
+          padding: 12px;
+          background-color: #f8f9fa;
+          border-radius: 8px;
+          font-size: 14px;
+          border-left: 3px solid ${primaryColor};
+          width: 100%;
+          box-sizing: border-box;
+        }
+        
+        .route-details p {
+          margin: 5px 0;
+        }
+        
+        .route-details .walk-time {
+          font-weight: 600;
+          color: ${primaryColor};
+        }
+        
+        .btn-container {
+          display: flex;
+          justify-content: space-between;
+          margin-top: auto;
+          padding-top: 20px;
+          width: 100%;
+        }
+        
+        .btn {
+          padding: 12px 20px;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+          border: none;
+          font-size: 15px;
+          transition: all 0.2s ease;
+        }
+        
+        .btn-primary {
+          background-color: ${primaryColor};
+          color: white;
+        }
+        
+        .btn-primary:hover {
+          background-color: ${secondaryColor};
+        }
+        
+        .btn-secondary {
+          background-color: #f1f3f5;
+          color: #495057;
+        }
+        
+        .btn-secondary:hover {
+          background-color: #e9ecef;
+        }
+        
+        .btn-route {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          background-color: ${primaryColor};
+          color: white;
+          margin-top: 15px;
+        }
+        
+        .btn-route:hover {
+          background-color: ${secondaryColor};
+        }
+
+        .map-fallback {
+          display: none;
+          padding: 20px;
+          text-align: center;
+          background-color: #f8f9fa;
+          border-radius: 8px;
+          height: 100%;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        
+        h3, p, form, div.tour-options, div.progress-container, div.btn-container,
+        div.pickup-card, div.route-details, button.btn-route,
+        div.map-container, div.route-map-container, div.map-fallback {
+          width: 100%;
+          max-width: 420px;
+        }
+        
+        img, iframe {
+          max-width: 100%;
+          border: 0;
+        }
+        
+        /* New styles for address selection feedback */
+        .address-selection-success {
+          border-color: ${primaryColor} !important;
+          box-shadow: 0 0 0 1px ${primaryColor};
+        }
+        
+        .address-selection-processing {
+          border-color: #FFA500 !important;
+          box-shadow: 0 0 0 1px #FFA500;
+        }
+        
+        .address-selection-error {
+          border-color: #FF4136 !important;
+          box-shadow: 0 0 0 1px #FF4136;
+        }
+      </style>
+      
+      <div class="directions-workflow-container">
+        <div class="workflow-header">
+          <h2>${workflowTitle}</h2>
+        </div>
+        
+        <div class="workflow-content">
+          <div class="workflow-step active" id="step-tour">
+            <h3>Select Your Tour</h3>
+            <p>Please select the tour you'll be joining:</p>
+            
+            <div class="progress-container">
+              <div class="progress-steps">
+                <div class="step-indicator active"></div>
+                <div class="step-indicator"></div>
+                <div class="step-indicator"></div>
+                <div class="step-indicator"></div>
+              </div>
+            </div>
+            
+            <div class="tour-options">
+              ${toursData.map(tour => `
+                <div class="tour-card" data-tour-id="${tour.id}" data-tour-name="${tour.name}">
+                  <img src="${tour.image}" alt="${tour.name}" class="tour-image">
+                  <div class="tour-info">
+                    <h3>${tour.name}</h3>
+                    <p>${tour.description}</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div class="btn-container">
+              <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+              <button class="btn btn-primary" id="next-btn">Next</button>
+            </div>
+          </div>
+          
+          <div class="workflow-step" id="step-address">
+            <h3>Enter Your Accommodation</h3>
+            <p>Please enter the address where you're staying:</p>
+            
+            <div class="progress-container">
+              <div class="progress-steps">
+                <div class="step-indicator active"></div>
+                <div class="step-indicator active"></div>
+                <div class="step-indicator"></div>
+                <div class="step-indicator"></div>
+              </div>
+            </div>
+            
+            <form class="address-form" id="address-form">
+              <div class="form-group">
+                <label for="accommodation-name">Accommodation Name (optional)</label>
+                <input type="text" id="accommodation-name" class="form-control" placeholder="e.g. Hyatt Hotel">
+              </div>
+              
+              <div class="form-group">
+                <label for="address">Street Address*</label>
+                <div id="address-container" style="width: 100%;"></div>
+              </div>
+              
+              <div class="form-group">
+                <label for="city">City*</label>
+                <input type="text" id="city" class="form-control" value="Honolulu" required readonly>
+              </div>
+            </form>
+            
+            <div class="btn-container">
+              <button class="btn btn-secondary" id="back-to-tour-btn">Back</button>
+              <button class="btn btn-primary" id="find-pickup-btn">Find Pickup</button>
+            </div>
+          </div>
+          
+          <div class="workflow-step" id="step-searching">
+            <div class="loading-container">
+              <div class="loading-spinner"></div>
+              <div class="loading-text">Searching for location...</div>
+            </div>
+          </div>
+          
+          <div class="workflow-step" id="step-location-confirm">
+            <h3>Confirm Your Location</h3>
+            
+            <div class="progress-container">
+              <div class="progress-steps">
+                <div class="step-indicator active"></div>
+                <div class="step-indicator active"></div>
+                <div class="step-indicator active"></div>
+                <div class="step-indicator"></div>
+              </div>
+            </div>
+            
+            <div class="map-container" id="location-map"></div>
+            <div class="map-fallback" id="location-map-fallback">
+              <p>Unable to display map.</p>
+              <p id="fallback-address"></p>
+            </div>
+            
+            <p class="confirmation-text">Is this the correct location?</p>
+            
+            <div class="btn-container">
+              <button class="btn btn-secondary" id="edit-address-btn">No, Edit</button>
+              <button class="btn btn-primary" id="confirm-location-btn">Yes, Continue</button>
+            </div>
+          </div>
+          
+          <div class="workflow-step" id="step-finding-pickup">
+            <div class="loading-container">
+              <div class="loading-spinner"></div>
+              <div class="loading-text">Finding nearest pickup point...</div>
+            </div>
+          </div>
+          
+          <div class="workflow-step" id="step-pickup-info">
+            <h3>Your Pickup Location</h3>
+            
+            <div class="progress-container">
+              <div class="progress-steps">
+                <div class="step-indicator active"></div>
+                <div class="step-indicator active"></div>
+                <div class="step-indicator active"></div>
+                <div class="step-indicator active"></div>
+              </div>
+            </div>
+            
+            <div class="pickup-card">
+              <img id="pickup-image" src="" alt="Pickup point image" class="pickup-image">
+              <div class="pickup-info">
+                <h3 class="pickup-title" id="pickup-title">Loading pickup location...</h3>
+                <p class="pickup-address" id="pickup-address"></p>
+                <div class="pickup-instructions" id="pickup-instructions">
+                  <p id="pickup-time"></p>
+                  <p id="pickup-details"></p>
+                </div>
+              </div>
+            </div>
+            
+            <button class="btn btn-route" id="show-route-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              Show Route
+            </button>
+            
+            <div class="btn-container">
+              <button class="btn btn-secondary" id="back-to-confirm-btn">Back</button>
+              <button class="btn btn-primary" id="done-btn">Done</button>
+            </div>
+          </div>
+          
+          <div class="workflow-step" id="step-route">
+            <h3>Getting to Your Pickup Point</h3>
+            
+            <div class="form-group">
+              <label for="transport-mode">Transportation Mode:</label>
+              <select id="transport-mode" class="form-control">
+                <option value="walking" selected>Walking</option>
+                <option value="bicycling">Bicycling</option>
+                <option value="driving">Driving</option>
+                <option value="transit">Public Transit</option>
+              </select>
+            </div>
+            
+            <div class="route-map-container" id="route-map"></div>
+            <div class="map-fallback" id="route-map-fallback">
+              <p>Unable to display route map.</p>
+              <div id="fallback-route-details"></div>
+            </div>
+            
+            <div class="route-details">
+              <p><strong>From:</strong> <span id="route-from">Your accommodation</span></p>
+              <p><strong>To:</strong> <span id="route-to">Duke Paoa Kahanamoku Statue, Waikiki Beach</span></p>
+              <p class="walk-time" id="route-time">Calculating travel time...</p>
+            </div>
+            
+            <div class="btn-container">
+              <button class="btn btn-secondary" id="back-to-pickup-btn">Back</button>
+              <button class="btn btn-primary" id="route-done-btn">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add wrapper to container and container to element
+    container.appendChild(wrapper);
+    element.appendChild(container);
+
+    // Apply animation and ensure scrollability
+    if (animateIn) {
+      setTimeout(() => {
+        wrapper.style.opacity = '1';
+        wrapper.style.transform = 'translateY(0)';
+        const tourOptions = wrapper.querySelector('.tour-options');
+        if (tourOptions) {
+          tourOptions.style.maxHeight = '350px';
+          tourOptions.style.overflowY = 'auto';
+        }
+      }, 100);
+    }
+
+    // Event listeners setup
+    function setupEventListeners() {
+      const tourCards = wrapper.querySelectorAll('.tour-card');
+      const nextBtn = wrapper.querySelector('#next-btn');
+      const cancelBtn = wrapper.querySelector('#cancel-btn');
+      const backToTourBtn = wrapper.querySelector('#back-to-tour-btn');
+      const findPickupBtn = wrapper.querySelector('#find-pickup-btn');
+      const editAddressBtn = wrapper.querySelector('#edit-address-btn');
+      const confirmLocationBtn = wrapper.querySelector('#confirm-location-btn');
+      const backToConfirmBtn = wrapper.querySelector('#back-to-confirm-btn');
+      const doneBtn = wrapper.querySelector('#done-btn');
+      const showRouteBtn = wrapper.querySelector('#show-route-btn');
+      const backToPickupBtn = wrapper.querySelector('#back-to-pickup-btn');
+      const routeDoneBtn = wrapper.querySelector('#route-done-btn');
+      const accommodationInput = wrapper.querySelector('#accommodation-name');
+
+      // Store accommodation name when it changes
+      if (accommodationInput) {
+        accommodationInput.addEventListener('input', (e) => {
+          workflowData.accommodationName = e.target.value;
+        });
+      }
+
+      tourCards.forEach(card => {
+        card.addEventListener('click', () => {
+          tourCards.forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          workflowData.selectedTour = card.dataset.tourId;
+          workflowData.selectedTourName = card.dataset.tourName;
+        });
+      });
+
+      nextBtn.addEventListener('click', () => {
+        if (workflowData.selectedTour) {
+          goToStep('step-address');
+          setupAutocomplete(); // Ensure autocomplete is set up when moving to address step
+        } else {
+          alert('Please select a tour first.');
+        }
+      });
+
+      cancelBtn.addEventListener('click', cancelWorkflow);
+      
+      backToTourBtn.addEventListener('click', () => {
+        goToStep('step-tour');
+      });
+      
+      findPickupBtn.addEventListener('click', () => {
+        // Debug log to check the current state
+        console.log('Find Pickup button clicked. Current workflow data:', {
+          addressEntered: workflowData.addressEntered,
+          addressSelectionComplete: workflowData.addressSelectionComplete,
+          userLocation: workflowData.userLocation,
+          addressAutocomplete: workflowData.addressAutocomplete ? 
+            { value: workflowData.addressAutocomplete.value } : null
+        });
+        
+        // Check for a properly selected address - either selection is complete or we have valid location data
+        if ((workflowData.addressSelectionComplete || workflowData.addressEntered) && workflowData.userLocation) {
+          goToStep('step-searching');
+          setTimeout(() => {
+            updateLocationMap(workflowData.userLocation);
+            goToStep('step-location-confirm');
+          }, 1000);
+        }
+        // If there's a value in the input but no completed selection, try geocoding
+        else if (workflowData.addressAutocomplete && workflowData.addressAutocomplete.value) {
+          // Try to geocode the manually entered address
+          geocodeAddress(workflowData.addressAutocomplete.value);
+        } 
+        else {
+          alert('Please enter a street address and select it from the dropdown menu');
+        }
+      });
+      
+      editAddressBtn.addEventListener('click', () => {
+        goToStep('step-address');
+      });
+      
+      confirmLocationBtn.addEventListener('click', findPickupPoint);
+      
+      backToConfirmBtn.addEventListener('click', () => {
+        goToStep('step-location-confirm');
+      });
+      
+      doneBtn.addEventListener('click', completeWorkflow);
+      
+      showRouteBtn.addEventListener('click', showRouteMap);
+      
+      backToPickupBtn.addEventListener('click', () => {
+        goToStep('step-pickup-info');
+      });
+      
+      routeDoneBtn.addEventListener('click', completeWorkflow);
+    }
+
+    // Navigate between steps
+    function goToStep(stepId) {
+      const steps = wrapper.querySelectorAll('.workflow-step');
+      steps.forEach(step => step.classList.remove('active'));
+      const targetStep = wrapper.querySelector(`#${stepId}`);
+      if (targetStep) {
+        targetStep.classList.add('active');
+        enforceConsistentWidth();
+      }
+    }
+
+    // Geocode an address manually
+    function geocodeAddress(address) {
+      const city = wrapper.querySelector('#city')?.value || 'Honolulu';
+      const fullAddress = `${address}, ${city}`;
+      
+      goToStep('step-searching');
+      
+      fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${apiKey}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'OK' && data.results && data.results.length > 0) {
+            const result = data.results[0];
+            
+            // Set the addressEntered flag to true since we've geocoded successfully
+            workflowData.addressEntered = true;
+            workflowData.addressSelectionComplete = true;
+            
+            workflowData.userLocation = {
+              address: result.formatted_address,
+              placeId: result.place_id,
+              lat: result.geometry.location.lat,
+              lng: result.geometry.location.lng
+            };
+            
+            // Visual feedback if the autocomplete element is available
+            if (workflowData.addressAutocomplete) {
+              workflowData.addressAutocomplete.style.borderColor = primaryColor;
+              
+              const selectionIndicator = wrapper.querySelector('#address-selection-indicator');
+              if (selectionIndicator) {
+                selectionIndicator.textContent = 'Address found: ' + result.formatted_address;
+                selectionIndicator.style.color = primaryColor;
+              }
+            }
+            
+            updateLocationMap(workflowData.userLocation);
+            goToStep('step-location-confirm');
+          } else {
+            console.error('Geocoding API error:', data.status);
+            alert('Unable to find location. Please enter a valid address.');
+            goToStep('step-address');
+          }
+        })
+        .catch(error => {
+          console.error('Error geocoding address:', error);
+          alert('Unable to find location. Please check your internet connection and try again.');
+          goToStep('step-address');
+        });
+    }
+
+    // Update location map with place data
+    function updateLocationMap(locationData) {
+      const mapContainer = wrapper.querySelector('#location-map');
+      const mapFallback = wrapper.querySelector('#location-map-fallback');
+      
+      if (mapContainer) {
+        try {
+          const mapUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=place_id:${locationData.placeId}&zoom=17&maptype=roadmap`;
+          mapContainer.innerHTML = `
+            <iframe
+              width="100%"
+              height="100%"
+              frameborder="0"
+              style="border:0"
+              src="${mapUrl}"
+              allowfullscreen
+              onload="document.getElementById('location-map').style.display='block'; document.getElementById('location-map-fallback').style.display='none';"
+              onerror="document.getElementById('location-map').style.display='none'; document.getElementById('location-map-fallback').style.display='block';"
+            ></iframe>
+          `;
+          
+          if (mapFallback) {
+            const fallbackAddressEl = mapFallback.querySelector('#fallback-address');
+            if (fallbackAddressEl) {
+              fallbackAddressEl.textContent = locationData.address;
+            }
+          }
+        } catch (error) {
+          console.error('Error embedding map:', error);
+          if (mapContainer) mapContainer.style.display = 'none';
+          if (mapFallback) mapFallback.style.display = 'block';
+        }
+      }
+    }
+
+    // Find pickup point (always uses the fixed pickup)
+    function findPickupPoint() {
+      goToStep('step-finding-pickup');
+      
+      setTimeout(() => {
+        // Update pickup info UI
+        const pickupImage = wrapper.querySelector('#pickup-image');
+        const pickupTitle = wrapper.querySelector('#pickup-title');
+        const pickupAddress = wrapper.querySelector('#pickup-address');
+        const pickupTime = wrapper.querySelector('#pickup-time');
+        const pickupDetails = wrapper.querySelector('#pickup-details');
+
+        if (pickupImage) pickupImage.src = FIXED_PICKUP.image;
+        if (pickupTitle) pickupTitle.textContent = FIXED_PICKUP.name;
+        if (pickupAddress) pickupAddress.textContent = `Pickup address for ${workflowData.selectedTourName}`;
+        if (pickupTime) pickupTime.innerHTML = `<strong>Pickup time:</strong> ${FIXED_PICKUP.time}`;
+        if (pickupDetails) pickupDetails.textContent = FIXED_PICKUP.instructions;
+
+        goToStep('step-pickup-info');
+      }, 1500);
+    }
+
+    // Show route map with transportation mode
+    function showRouteMap() {
+      const transportMode = wrapper.querySelector('#transport-mode')?.value || 'walking';
+      
+      if (!workflowData.userLocation) {
+        alert('Unable to find your location. Please go back and try again.');
+        return;
+      }
+      
+      const origin = `${workflowData.userLocation.lat},${workflowData.userLocation.lng}`;
+      const destination = `${FIXED_PICKUP.lat},${FIXED_PICKUP.lon}`;
+      
+      const routeMapContainer = wrapper.querySelector('#route-map');
+      const routeMapFallback = wrapper.querySelector('#route-map-fallback');
+      
+      if (routeMapContainer) {
+        try {
+          const directionsUrl = `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${origin}&destination=${destination}&mode=${transportMode}`;
+          
+          routeMapContainer.innerHTML = `
+            <iframe
+              width="100%"
+              height="100%"
+              frameborder="0"
+              style="border:0"
+              src="${directionsUrl}"
+              allowfullscreen
+              onload="document.getElementById('route-map').style.display='block'; document.getElementById('route-map-fallback').style.display='none';"
+              onerror="document.getElementById('route-map').style.display='none'; document.getElementById('route-map-fallback').style.display='block';"
+            ></iframe>
+          `;
+          
+          if (routeMapFallback) {
+            const fallbackRouteDetails = routeMapFallback.querySelector('#fallback-route-details');
+            if (fallbackRouteDetails) {
+              fallbackRouteDetails.innerHTML = `
+                <p>${transportMode.charAt(0).toUpperCase() + transportMode.slice(1)} route from ${workflowData.userLocation.address} to ${FIXED_PICKUP.name}.</p>
+              `;
+            }
+          }
+        } catch (error) {
+          console.error('Error embedding route map:', error);
+          if (routeMapContainer) routeMapContainer.style.display = 'none';
+          if (routeMapFallback) routeMapFallback.style.display = 'block';
+        }
+      }
+
+      // Update route details
+      const routeFrom = wrapper.querySelector('#route-from');
+      const routeTo = wrapper.querySelector('#route-to');
+      const routeTime = wrapper.querySelector('#route-time');
+
+      if (routeFrom) routeFrom.textContent = workflowData.userLocation.address;
+      if (routeTo) routeTo.textContent = FIXED_PICKUP.name;
+
+      // Calculate travel time based on mode
+      const distance = calculateDistance(
+        workflowData.userLocation.lat, 
+        workflowData.userLocation.lng, 
+        FIXED_PICKUP.lat, 
+        FIXED_PICKUP.lon
+      );
+      
+      const speeds = {
+        walking: 4,     // km/h
+        bicycling: 15,  // km/h
+        driving: 40,    // km/h
+        transit: 20     // km/h
+      };
+      
+      const timeMinutes = Math.round((distance / (speeds[transportMode] || 4)) * 60);
+      
+      const modeDisplay = {
+        walking: 'Walking',
+        bicycling: 'Biking',
+        driving: 'Driving',
+        transit: 'Transit'
+      };
+      
+      if (routeTime) {
+        routeTime.textContent = `${modeDisplay[transportMode] || 'Travel'} time: ~${timeMinutes} minutes (${distance.toFixed(1)} km)`;
+      }
+
+      goToStep('step-route');
+      
+      // Add listener for transport mode changes
+      const transportModeElement = wrapper.querySelector('#transport-mode');
+      if (transportModeElement && !transportModeElement.dataset.listenerAdded) {
+        transportModeElement.addEventListener('change', showRouteMap);
+        transportModeElement.dataset.listenerAdded = 'true';
+      }
+    }
+
+    // Calculate distance using Haversine formula
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Enforce consistent width
+    function enforceConsistentWidth() {
+      const steps = wrapper.querySelectorAll('.workflow-step');
+      steps.forEach(step => {
+        step.style.width = '100%';
+        step.style.maxWidth = '100%';
+      });
+      
+      const contentElements = wrapper.querySelectorAll('.workflow-step > *');
+      contentElements.forEach(element => {
+        element.style.maxWidth = '100%';
+        element.style.boxSizing = 'border-box';
+      });
+    }
+
+    // Cancel workflow
+    function cancelWorkflow() {
+      // If integrated with Voiceflow, can signal cancellation
+      if (window.voiceflow && window.voiceflow.chat) {
+        window.voiceflow.chat.interact({
+          type: 'request',
+          payload: {
+            type: 'directions-cancel'
+          }
+        });
+      } else {
+        // Simple fallback
+        element.innerHTML = '<p>Workflow cancelled.</p>';
+      }
+    }
+
+    // Complete workflow
+    function completeWorkflow() {
+      // Include accommodation name with location data
+      const fullAddress = workflowData.accommodationName 
+        ? `${workflowData.accommodationName}, ${workflowData.userLocation?.address || ''}`
+        : workflowData.userLocation?.address || '';
+      
+      // If integrated with Voiceflow, can signal completion with data
+      if (window.voiceflow && window.voiceflow.chat) {
+        window.voiceflow.chat.interact({
+          type: 'request',
+          payload: {
+            type: 'directions-complete',
+            data: {
+              selectedTour: workflowData.selectedTourName,
+              userAddress: fullAddress,
+              pickupPoint: FIXED_PICKUP.name,
+              pickupTime: FIXED_PICKUP.time,
+              pickupInstructions: FIXED_PICKUP.instructions,
+              userLat: workflowData.userLocation?.lat || 0,
+              userLon: workflowData.userLocation?.lng || 0,
+              pickupLat: FIXED_PICKUP.lat,
+              pickupLon: FIXED_PICKUP.lon
+            }
+          }
+        });
+      } else {
+        // Simple fallback
+        element.innerHTML = `
+          <div style="padding: 20px; text-align: center;">
+            <h3>Thank you for completing the workflow!</h3>
+            <p>Your pickup has been confirmed at ${FIXED_PICKUP.name} for ${workflowData.selectedTourName}.</p>
+            <p>Pickup time: ${FIXED_PICKUP.time}</p>
+          </div>
+        `;
+      }
+    }
+
+    // Initialize workflow
+    loadGoogleMapsScript()
+      .then(() => {
+        console.log('Google Maps API loaded successfully');
+        setupEventListeners();
+        setupAutocomplete();
+        enforceConsistentWidth();
+      })
+      .catch(error => {
+        console.error('Failed to load Google Maps API:', error);
+        alert('There was an error loading the map service. Please disable any ad blockers or try a different browser.');
+        setupEventListeners(); // Still set up event listeners even if Maps API fails
+        enforceConsistentWidth();
+      });
+  },
+};
+
+// YRS: This "DirectionsWorkflowExtension22" is working correctly but I would like to integrate the Autocomplete feature in here.
+
 export const DirectionsWorkflowExtension22 = {
     name: 'DirectionsWorkflow',
     type: 'response',

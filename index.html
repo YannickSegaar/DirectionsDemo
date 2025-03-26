@@ -50,6 +50,7 @@
 
     // Import extensions from the extensions.js file
     import {
+        DirectionsWorkflowExtension7,
         DirectionsWorkflowExtension22
     } from '/extensions.js';
 
@@ -77,7 +78,8 @@
           allowDangerousHTML: true,
           assistant: {
             extensions: [
-         DirectionsWorkflowExtension22
+            DirectionsWorkflowExtension7,
+            DirectionsWorkflowExtension22
             ],
             stylesheet: "https://yannicksegaar.github.io/VF-extensions/chat-widget-custom_FareHarborCarousel.css",
           },
